@@ -1,11 +1,21 @@
 using api_screenvault.Data;
-using api_screenvault.Repository;
+using api_screenvault.Model;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+
+//CORS
+builder.Services.AddCors(o => o.AddPolicy("MyCorsPolicyScreenvaoult", builder => {
+    builder.AllowAnyOrigin()
+    .AllowAnyHeader()
+    .AllowAnyMethod();
+    //.WithMethods("PUT", "DELETE", "GET", "POST");
+
+}));
+
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -22,7 +32,9 @@ builder.Services.AddIdentityCore<User>()
 builder.Services.AddAuthentication().AddBearerToken(IdentityConstants.BearerScheme); //setting using jwt
 builder.Services.AddAuthorizationBuilder();
 
+
 var app = builder.Build();
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -32,7 +44,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
+app.UseCors("MyCorsPolicyScreenvaoult");
 app.UseAuthorization();
 
 app.MapControllers();
