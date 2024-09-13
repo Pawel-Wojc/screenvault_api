@@ -14,8 +14,8 @@ namespace api_screenvault.Services
         public FileService(IConfiguration config)
         {
             _config = config;
-            _storageAccount = _config["BlobContainersStorageKey"];
-            _storageKey = _config["BlobContainersStorageAccount"];
+            _storageAccount = _config["BlobContainersStorageAccount"];
+            _storageKey = _config["BlobContainersStorageKey"];
             var credential = new StorageSharedKeyCredential(_storageAccount, _storageKey);
             var blobUri = $"https://{_storageAccount}.blob.core.windows.net";
             var blobServiceClient = new BlobServiceClient(new Uri(blobUri), credential);
@@ -41,6 +41,74 @@ namespace api_screenvault.Services
                     });
             }
             return files;
+        }
+
+        public async Task<BlobResponseDto> UploadAsyn(string fileName, IFormFile blob) { 
+
+            //implement error handling
+
+            BlobResponseDto blobResponse = new ();
+            BlobClient blobClient = _containerClient.GetBlobClient(fileName);
+
+            await using (Stream? data = blob.OpenReadStream()) {
+                try
+                {
+                    await blobClient.UploadAsync(data);
+
+                }
+                catch (Exception e) {
+                    blobResponse.Status = e.Message;
+                    blobResponse.Error = true;
+                    blobResponse.Blob.Uri = "";
+                    blobResponse.Blob.Name = "";
+                    return blobResponse;
+
+                }
+                
+            }
+           
+
+            blobResponse.Status = $"File {blob.FileName} Uploaded Successfully";
+            blobResponse.Error = false ;
+            blobResponse.Blob.Uri = blobClient.Uri.AbsoluteUri;
+            blobResponse.Blob.Name = blobClient.Name;
+
+            return blobResponse;
+
+
+        }
+
+        public async Task<BlobDto?> DownloadAsync(string blobFilename) {
+            BlobClient file = _containerClient.GetBlobClient(blobFilename);
+
+            if (await file.ExistsAsync()) {
+
+                var data = await file.OpenReadAsync();
+                Stream blobContent = data;
+
+                var content = await file.DownloadContentAsync();
+
+                string name = blobFilename;
+
+                string contentType = content.Value.Details.ContentType;
+
+                return new BlobDto {Content = blobContent, Name = name, ContentType = contentType};
+            }
+
+            return null;
+
+
+        }
+
+
+        public async Task<BlobResponseDto> DeleteAsync(string blobFileName) {
+
+
+            BlobClient file = _containerClient.GetBlobClient(blobFileName);
+
+            await file.DeleteAsync();
+
+            return new BlobResponseDto { Error = false, Status = $"File: {blobFileName} has been succesfully deleted" };
         }
     }
 }

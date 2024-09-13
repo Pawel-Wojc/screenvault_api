@@ -1,4 +1,4 @@
-﻿using api_screenvault.Repository;
+﻿using api_screenvault.Model;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,6 +13,10 @@ namespace api_screenvault.Data
         }
 
         public DbSet<User> Users { get; set; }
+        public DbSet<Post> Posts { get; set; }
+
+        public DbSet<Comment> Comments { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
