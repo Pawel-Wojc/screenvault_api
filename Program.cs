@@ -24,7 +24,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<FileService>();
 builder.Services.AddDbContext<ApplicationDbContext>(
-       options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))); //setting db context for api
+       options => options.UseSqlServer(builder.Configuration["ConnectionStrings:DefaultConnection"])); 
 
 builder.Services.AddAuthorization();
 builder.Services.AddAuthentication().AddCookie(IdentityConstants.ApplicationScheme);
