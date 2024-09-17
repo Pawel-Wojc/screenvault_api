@@ -1,4 +1,5 @@
 using api_screenvault.Data;
+using api_screenvault.Helpers;
 using api_screenvault.Model;
 using api_screenvault.Services;
 using Microsoft.AspNetCore.Identity;
@@ -24,8 +25,10 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<FileService>();
 builder.Services.AddDbContext<ApplicationDbContext>(
-       options => options.UseSqlServer(builder.Configuration["ConnectionStrings:DefaultConnection"])); 
-
+       options => options.UseSqlServer(builder.Configuration["ConnectionStrings:DefaultConnection"]));
+builder.Services.AddScoped<IAnonymousPostService, AnonymousPostService>();
+builder.Services.AddScoped<IAnonymousAzureBlobHandling, AnonymousAzureBlobHandling>();
+builder.Services.AddScoped<ISharedPostIdGenerator, SharedPostIdGenerator>();
 builder.Services.AddAuthorization();
 builder.Services.AddAuthentication().AddCookie(IdentityConstants.ApplicationScheme);
 builder.Services.AddIdentityCore<User>()
