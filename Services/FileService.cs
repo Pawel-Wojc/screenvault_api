@@ -1,21 +1,25 @@
 ﻿using api_screenvault.Dto;
+using Azure;
 using Azure.Storage;
 using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 
 namespace api_screenvault.Services
 {
     public class FileService
     {
         private readonly IConfiguration _config;
+        private readonly ILogger _logger;
         private readonly BlobContainerClient _containerClient;
         private readonly string _storageAccount;
         private readonly string _storageKey;
 
-        public FileService(IConfiguration config)
+        public FileService(IConfiguration config, ILogger<FileService> logger)
         {
+            _logger = logger;
             _config = config;
-            _storageAccount = _config["BlobContainersStorageAccount"];
-            _storageKey = _config["BlobContainersStorageKey"];
+            _storageAccount = _config["PublicBlobContainersStorageAccount"];
+            _storageKey = _config["PublicBlobContainersStorageKey"];
             var credential = new StorageSharedKeyCredential(_storageAccount, _storageKey);
             var blobUri = $"https://{_storageAccount}.blob.core.windows.net";
             var blobServiceClient = new BlobServiceClient(new Uri(blobUri), credential);
@@ -40,49 +44,56 @@ namespace api_screenvault.Services
                         ContentType = file.Properties.ContentType
                     });
             }
+
             return files;
         }
 
-        public async Task<BlobResponseDto> UploadAsyn(string fileName, IFormFile blob) { 
+        public async Task<BlobResponseDto> UploadAsyn( IFormFile fileFromUser)
+        {
+            BlobResponseDto blobResponse = new();
+            BlobClient blobClient = _containerClient.GetBlobClient(fileFromUser.FileName);
+            Response<BlobContentInfo> resultFromBlobStorage;
 
-            //implement error handling
-
-            BlobResponseDto blobResponse = new ();
-            BlobClient blobClient = _containerClient.GetBlobClient(fileName);
-
-            await using (Stream? data = blob.OpenReadStream()) {
+            await using (Stream? data = fileFromUser.OpenReadStream())
+            {
                 try
                 {
-                    await blobClient.UploadAsync(data);
-
+                    resultFromBlobStorage = await blobClient.UploadAsync(data);
                 }
-                catch (Exception e) {
-                    blobResponse.Status = e.Message;
+                catch (Exception e)
+                {
+                    if (e.InnerException is RequestFailedException)
+                    {
+                        _logger.LogWarning($"Failed to upload file, Error: {e.Message}");
+                        blobResponse.Status = "Failed to upload file";
+                        blobResponse.Error = true;
+                        blobResponse.Blob.Uri = null;
+                        blobResponse.Blob.Name = null;
+                        return blobResponse;
+                    }
+
+                    blobResponse.Status = "Something went wrong";
                     blobResponse.Error = true;
-                    blobResponse.Blob.Uri = "";
-                    blobResponse.Blob.Name = "";
+                    blobResponse.Blob.Uri = null;
+                    blobResponse.Blob.Name = null;
                     return blobResponse;
-
                 }
-                
             }
-           
 
-            blobResponse.Status = $"File {blob.FileName} Uploaded Successfully";
-            blobResponse.Error = false ;
+            blobResponse.Status = $"File {fileFromUser.FileName} Uploaded Successfully";
+            blobResponse.Error = false;
             blobResponse.Blob.Uri = blobClient.Uri.AbsoluteUri;
             blobResponse.Blob.Name = blobClient.Name;
 
             return blobResponse;
-
-
         }
 
-        public async Task<BlobDto?> DownloadAsync(string blobFilename) {
+        public async Task<BlobDto?> DownloadAsync(string blobFilename)
+        {
             BlobClient file = _containerClient.GetBlobClient(blobFilename);
 
-            if (await file.ExistsAsync()) {
-
+            if (await file.ExistsAsync())
+            {
                 var data = await file.OpenReadAsync();
                 Stream blobContent = data;
 
@@ -92,18 +103,15 @@ namespace api_screenvault.Services
 
                 string contentType = content.Value.Details.ContentType;
 
-                return new BlobDto {Content = blobContent, Name = name, ContentType = contentType};
+                return new BlobDto { Content = blobContent, Name = name, ContentType = contentType };
             }
 
             return null;
-
-
         }
 
 
-        public async Task<BlobResponseDto> DeleteAsync(string blobFileName) {
-
-
+        public async Task<BlobResponseDto> DeleteAsync(string blobFileName)
+        {
             BlobClient file = _containerClient.GetBlobClient(blobFileName);
 
             await file.DeleteAsync();
