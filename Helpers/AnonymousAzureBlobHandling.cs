@@ -9,20 +9,20 @@ namespace api_screenvault.Helpers
 
 {
     public interface IAnonymousAzureBlobHandling {
-        public Task<BlobResponseDto> UploadAnonymousAsyn(IFormFile fileFromUser);
+        public Task<BlobResponseDto> UploadAnonymousAsync(IFormFile fileFromUser);
 
 
     }
     public class AnonymousAzureBlobHandling : IAnonymousAzureBlobHandling
     {
         
-             private readonly IConfiguration _config;
+        private readonly IConfiguration _config;
         private readonly ILogger _logger;
         private readonly BlobContainerClient _containerClient;
         private readonly string _storageAccount;
         private readonly string _storageKey;
 
-        public AnonymousAzureBlobHandling(IConfiguration config, ILogger<FileService> logger)
+        public AnonymousAzureBlobHandling(IConfiguration config, ILogger<AnonymousAzureBlobHandling> logger)
         {
             _logger = logger;
             _config = config;
@@ -58,10 +58,16 @@ namespace api_screenvault.Helpers
             return files;
         }
 
-        public async Task<BlobResponseDto> UploadAnonymousAsyn(IFormFile fileFromUser)
+        public async Task<BlobResponseDto> UploadAnonymousAsync(IFormFile fileFromUser)
         {
             BlobResponseDto blobResponse = new();
-            BlobClient blobClient = _containerClient.GetBlobClient(fileFromUser.FileName);
+            if (!ExtensionChecker.ExtensionIsValid(fileFromUser.FileName)) {
+                throw new Exception("Invalid extension");
+            }
+            
+            var pathOnBlobStorage = $"{fileFromUser.FileName}.{Guid.NewGuid().ToString()}" ; // garantee that the filename is unique
+
+            BlobClient blobClient = _containerClient.GetBlobClient(pathOnBlobStorage);
             Response<BlobContentInfo> resultFromBlobStorage;
 
             await using (Stream? data = fileFromUser.OpenReadStream())
@@ -94,6 +100,7 @@ namespace api_screenvault.Helpers
             blobResponse.Error = false;
             blobResponse.Blob.Uri = blobClient.Uri.AbsoluteUri;
             blobResponse.Blob.Name = blobClient.Name;
+            
 
             return  blobResponse;
         }
