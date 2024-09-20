@@ -8,8 +8,8 @@
         public int? Views { get; set; }
         public int? Votes { get; set; }
         public bool IsAnonymous { get; set; }
-        public ICollection<string>? Tags { get; set; }
-        public string? Uri { get; set; }
+        public IList<string>? Tags { get; set; }
+        public string? Path { get; set; }
         public string? LinkId { get; set; } //a 6 digits and letters code to store image
         public DateTime CreatedAt { get; set; }
 
